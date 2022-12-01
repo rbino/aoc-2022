@@ -11,7 +11,47 @@ const gpa = util.gpa;
 const data = @embedFile("data/day01.txt");
 
 pub fn main() !void {
-    
+    const result = try solvePart1(data);
+    print("Part 1 result: {}\n", .{result});
+}
+
+fn solvePart1(input: []const u8) !usize {
+    var max_calories: usize = 0;
+    var elf_iterator = split(u8, input, "\n\n");
+    while (elf_iterator.next()) |elf| {
+        var elf_calories: usize = 0;
+        var food_iterator = tokenize(u8, elf, "\n");
+        while (food_iterator.next()) |food| {
+            const calories = try parseInt(usize, food, 10);
+            elf_calories += calories;
+        }
+        if (elf_calories > max_calories) {
+            max_calories = elf_calories;
+        }
+    }
+    return max_calories;
+}
+
+test "example input" {
+    const input =
+        \\1000
+        \\2000
+        \\3000
+        \\
+        \\4000
+        \\
+        \\5000
+        \\6000
+        \\
+        \\7000
+        \\8000
+        \\9000
+        \\
+        \\10000
+    ;
+
+    const result = try solvePart1(input);
+    assert(result == 24000);
 }
 
 // Useful stdlib functions

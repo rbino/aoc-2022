@@ -1,24 +1,13 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-const Order = std.math.Order;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
-
 const data = @embedFile("data/day02.txt");
+const assert = std.debug.assert;
+const print = std.debug.print;
+const tokenize = std.mem.tokenize;
 
 pub const Shape = enum(u8) {
     rock = 1,
     paper = 2,
     scissors = 3,
-
-    const loss_points: usize = 0;
-    const draw_points: usize = 3;
-    const victory_points: usize = 6;
 
     pub fn parse(in: u8) Shape {
         return switch (in) {
@@ -29,24 +18,65 @@ pub const Shape = enum(u8) {
         };
     }
 
-    pub fn shapePoints(self: Shape) usize {
+    pub fn points(self: Shape) usize {
         return @enumToInt(self);
     }
 
-    pub fn outcomePoints(self: Shape, other: Shape) usize {
-        if (self == other) return draw_points;
+    pub fn outcome(self: Shape, other: Shape) Outcome {
+        if (self == other) return .draw;
+        return if (self.beats() == other) .victory else .loss;
+    }
 
+    pub fn beats(self: Shape) Shape {
         return switch (self) {
-            .rock => if (other == .scissors) victory_points else loss_points,
-            .paper => if (other == .rock) victory_points else loss_points,
-            .scissors => if (other == .paper) victory_points else loss_points,
+            .rock => .scissors,
+            .paper => .rock,
+            .scissors => .paper,
         };
+    }
+
+    pub fn beatenBy(self: Shape) Shape {
+        return switch (self) {
+            .rock => .paper,
+            .paper => .scissors,
+            .scissors => .rock,
+        };
+    }
+};
+
+pub const Outcome = enum(u8) {
+    loss = 0,
+    draw = 3,
+    victory = 6,
+
+    pub fn parse(in: u8) Outcome {
+        return switch (in) {
+            'X' => .loss,
+            'Y' => .draw,
+            'Z' => .victory,
+            else => unreachable,
+        };
+    }
+
+    pub fn points(self: Outcome) usize {
+        return @enumToInt(self);
+    }
+
+    pub fn requiredShape(self: Outcome, other_player_shape: Shape) Shape {
+        switch (self) {
+            .loss => return other_player_shape.beats(),
+            .draw => return other_player_shape,
+            .victory => return other_player_shape.beatenBy(),
+        }
     }
 };
 
 pub fn main() !void {
     const part1_result = try solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
 fn solvePart1(input: []const u8) !usize {
@@ -56,7 +86,22 @@ fn solvePart1(input: []const u8) !usize {
         assert(line.len == 3);
         const elf_shape = Shape.parse(line[0]);
         const player_shape = Shape.parse(line[2]);
-        total_score += player_shape.outcomePoints(elf_shape) + player_shape.shapePoints();
+        const outcome = player_shape.outcome(elf_shape);
+        total_score += outcome.points() + player_shape.points();
+    }
+
+    return total_score;
+}
+
+fn solvePart2(input: []const u8) !usize {
+    var total_score: usize = 0;
+    var lines = tokenize(u8, input, "\n");
+    while (lines.next()) |line| {
+        assert(line.len == 3);
+        const elf_shape = Shape.parse(line[0]);
+        const outcome = Outcome.parse(line[2]);
+        const player_shape = outcome.requiredShape(elf_shape);
+        total_score += outcome.points() + player_shape.points();
     }
 
     return total_score;
@@ -71,36 +116,7 @@ test "example input" {
 
     const part1_result = try solvePart1(input);
     assert(part1_result == 15);
+
+    const part2_result = try solvePart2(input);
+    assert(part2_result == 12);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

@@ -1,14 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
-
-// Useful stdlib functions
 const tokenize = std.mem.tokenize;
 const split = std.mem.split;
 const swap = std.mem.swap;

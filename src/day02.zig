@@ -36,11 +36,20 @@ pub const Shape = enum(u8) {
     }
 
     pub fn beatenBy(self: Shape) Shape {
-        return switch (self) {
-            .rock => .paper,
-            .paper => .scissors,
-            .scissors => .rock,
-        };
+        switch (self) {
+            inline else => |shape| {
+                const winner = comptime blk: {
+                    inline for (@typeInfo(Shape).Enum.fields) |field| {
+                        const other_shape = @intToEnum(Shape, field.value);
+                        if (other_shape.beats() == shape) {
+                            break :blk other_shape;
+                        }
+                    }
+                    unreachable;
+                };
+                return winner;
+            },
+        }
     }
 };
 

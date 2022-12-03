@@ -1,17 +1,15 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
-
+const tokenize = std.mem.tokenize;
+const print = std.debug.print;
+const assert = std.debug.assert;
 const data = @embedFile("data/day03.txt");
 
 pub fn main() !void {
     const part1_result = try solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
 const priority_count = ('z' - 'a' + 1) + ('Z' - 'A' + 1);
@@ -31,8 +29,8 @@ fn solvePart1(input: []const u8) !usize {
     while (lines.next()) |line| {
         assert(line.len % 2 == 0);
         const half = line.len / 2;
-        var first_compartment = initCompartmentSet(line[0..half]);
-        const second_compartment = initCompartmentSet(line[half..]);
+        var first_compartment = initPrioritySet(line[0..half]);
+        const second_compartment = initPrioritySet(line[half..]);
         first_compartment.setIntersection(second_compartment);
         const misplaced_item_priority = first_compartment.findFirstSet().? + 1;
         priority_sum += misplaced_item_priority;
@@ -41,15 +39,37 @@ fn solvePart1(input: []const u8) !usize {
     return priority_sum;
 }
 
-fn initCompartmentSet(compartment: []const u8) PrioritySet {
+fn solvePart2(input: []const u8) !usize {
+    const group_size = 3;
+    var priority_sum: usize = 0;
+    var lines = tokenize(u8, input, "\n");
+    outer: while (true) {
+        var intersection_set: ?PrioritySet = null;
+        var i: usize = 0;
+        while (i < group_size) : (i += 1) {
+            const line = lines.next() orelse break :outer;
+            if (intersection_set) |*intersection| {
+                const rucksack_set = initPrioritySet(line);
+                intersection.setIntersection(rucksack_set);
+            } else {
+                intersection_set = initPrioritySet(line);
+            }
+        }
+        const common_item_priority = intersection_set.?.findFirstSet().? + 1;
+        priority_sum += common_item_priority;
+    }
+
+    return priority_sum;
+}
+
+fn initPrioritySet(items: []const u8) PrioritySet {
     var bitset = PrioritySet.initEmpty();
-    for (compartment) |item| {
+    for (items) |item| {
         const p = priority(item);
         bitset.set(p - 1);
     }
     return bitset;
 }
-
 
 test "priority" {
     assert(priority('p') == 16);
@@ -72,36 +92,7 @@ test "example input" {
 
     const part1_result = try solvePart1(input);
     assert(part1_result == 157);
+
+    const part2_result = try solvePart2(input);
+    assert(part2_result == 70);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

@@ -13,6 +13,9 @@ const data = @embedFile("data/day04.txt");
 pub fn main() !void {
     const part1_result = try solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
 fn solvePart1(input: []const u8) !usize {
@@ -27,6 +30,20 @@ fn solvePart1(input: []const u8) !usize {
         }
     }
     return fully_contained;
+}
+
+fn solvePart2(input: []const u8) !usize {
+    var overlapping: usize = 0;
+    var lines = tokenize(u8, input, "\n");
+    while (lines.next()) |line| {
+        const comma_idx = indexOf(u8, line, ',').?;
+        const first_range = try Range.parse(line[0..comma_idx]);
+        const second_range = try Range.parse(line[comma_idx + 1 ..]);
+        if (first_range.overlaps(second_range)) {
+            overlapping += 1;
+        }
+    }
+    return overlapping;
 }
 
 pub const Range = struct {
@@ -44,6 +61,10 @@ pub const Range = struct {
     pub fn fullyContains(self: Range, other: Range) bool {
         return (other.start >= self.start and other.end <= self.end);
     }
+
+    pub fn overlaps(self: Range, other: Range) bool {
+        return (other.start <= self.end and other.end >= self.start);
+    }
 };
 
 test "example input" {
@@ -57,6 +78,7 @@ test "example input" {
     ;
 
     assert(try solvePart1(input) == 2);
+    assert(try solvePart2(input) == 4);
 }
 // Useful stdlib functions
 const tokenize = std.mem.tokenize;

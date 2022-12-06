@@ -15,6 +15,9 @@ const data = @embedFile("data/day05.txt");
 pub fn main() !void {
     const part1_result = try solvePart1(gpa, data);
     print("Part 1 result: {s}\n", .{part1_result});
+
+    const part2_result = try solvePart2(gpa, data);
+    print("Part 2 result: {s}\n", .{part2_result});
 }
 
 fn solvePart1(allocator: Allocator, input: []const u8) ![]const u8 {
@@ -35,7 +38,37 @@ fn solvePart1(allocator: Allocator, input: []const u8) ![]const u8 {
 
     var instructions = tokenize(u8, input[starting_stacks_end + 2 ..], "\n");
     while (instructions.next()) |instr| {
-        try moveCrates(stacks, instr);
+        try moveCrates9000(stacks, instr);
+    }
+
+    var result = try allocator.alloc(u8, number_of_stacks);
+    for (result) |*top_of_stack, i| {
+        const stack_items = stacks[i].items;
+        top_of_stack.* = stack_items[stack_items.len - 1];
+    }
+
+    return result;
+}
+
+fn solvePart2(allocator: Allocator, input: []const u8) ![]const u8 {
+    const starting_stacks_end = indexOfStr(u8, input, "\n\n").?;
+    var backwards_initial_stacks = splitBackwards(u8, input[0..starting_stacks_end], "\n");
+
+    const number_of_stacks = parseNumberOfStacks(backwards_initial_stacks.next().?);
+
+    var arena_impl = ArenaAllocator.init(allocator);
+    defer arena_impl.deinit();
+    const arena = arena_impl.allocator();
+    var stacks = try arena.alloc(CrateStack, number_of_stacks);
+    for (stacks) |*stack| stack.* = CrateStack.init(arena);
+
+    while (backwards_initial_stacks.next()) |line| {
+        try pushStacksLine(stacks, line);
+    }
+
+    var instructions = tokenize(u8, input[starting_stacks_end + 2 ..], "\n");
+    while (instructions.next()) |instr| {
+        try moveCrates9001(stacks, instr);
     }
 
     var result = try allocator.alloc(u8, number_of_stacks);
@@ -75,7 +108,7 @@ fn pushStacksLine(stacks: []CrateStack, line: []const u8) !void {
     }
 }
 
-fn moveCrates(stacks: []CrateStack, instr: []const u8) !void {
+fn moveCrates9000(stacks: []CrateStack, instr: []const u8) !void {
     // Instruction format:
     // move n_crates from src_stack to dst_stack
     var tokens = split(u8, instr, " ");
@@ -94,6 +127,28 @@ fn moveCrates(stacks: []CrateStack, instr: []const u8) !void {
         const crate = stacks[src_stack].pop();
         try stacks[dst_stack].append(crate);
     }
+}
+
+fn moveCrates9001(stacks: []CrateStack, instr: []const u8) !void {
+    // Instruction format:
+    // move n_crates from src_stack to dst_stack
+    var tokens = split(u8, instr, " ");
+    assert(std.mem.eql(u8, "move", tokens.next().?));
+    const n_crates = try parseInt(usize, tokens.next().?, 10);
+    assert(std.mem.eql(u8, "from", tokens.next().?));
+    // Adjust for 1-based
+    const src_stack = try parseInt(usize, tokens.next().?, 10) - 1;
+    assert(std.mem.eql(u8, "to", tokens.next().?));
+    // Adjust for 1-based
+    const dst_stack = try parseInt(usize, tokens.next().?, 10) - 1;
+    assert(tokens.next() == null);
+
+    const src_len = stacks[src_stack].items.len;
+    const crates_start = src_len - n_crates;
+    const crates = stacks[src_stack].items[crates_start..];
+    const new_len = src_len - n_crates;
+    stacks[src_stack].shrinkRetainingCapacity(new_len);
+    try stacks[dst_stack].appendSlice(crates);
 }
 
 test "parseNumberOfStacks" {
@@ -133,9 +188,13 @@ test "example input" {
         \\move 1 from 1 to 2
     ;
 
-    const result = try solvePart1(testing_allocator, input);
-    defer testing_allocator.free(result);
-    assert(std.mem.eql(u8, result, "CMZ"));
+    const result1 = try solvePart1(testing_allocator, input);
+    defer testing_allocator.free(result1);
+    assert(std.mem.eql(u8, result1, "CMZ"));
+
+    const result2 = try solvePart2(testing_allocator, input);
+    defer testing_allocator.free(result2);
+    assert(std.mem.eql(u8, result2, "MCD"));
 }
 
 const testing_allocator = std.testing.allocator;

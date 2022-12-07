@@ -1,22 +1,21 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
-
 const data = @embedFile("data/day06.txt");
+const trimRight = std.mem.trimRight;
+const print = std.debug.print;
+const assert = std.debug.assert;
 
 pub fn main() !void {
     const part1_result = solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = solvePart2(data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
+const PacketMarkerDetector = MarkerDetector(4);
+
 fn solvePart1(input: []const u8) usize {
-    var detector = MarkerDetector{};
+    var detector = PacketMarkerDetector{};
     for (trimRight(u8, input, "\n")) |c| {
         if (detector.feedAndDetect(c)) {
             return detector.pos;
@@ -25,28 +24,41 @@ fn solvePart1(input: []const u8) usize {
     unreachable;
 }
 
-pub const MarkerDetector = struct {
-    const marker_length = 4;
-    const Self = @This();
+const MessageMarkerDetector = MarkerDetector(14);
 
-    buffer: [marker_length]u8 = undefined,
-    pos: usize = 0,
-    start: u2 = 0,
-    end: u2 = 0,
-
-    pub fn feedAndDetect(self: *Self, char: u8) bool {
-        var i: u2 = self.start;
-        while (i != self.end) : (i +%= 1) {
-            if (self.buffer[i] == char) {
-                self.start = i +% 1;
-            }
+fn solvePart2(input: []const u8) usize {
+    var detector = MessageMarkerDetector{};
+    for (trimRight(u8, input, "\n")) |c| {
+        if (detector.feedAndDetect(c)) {
+            return detector.pos;
         }
-        self.buffer[self.end] = char;
-        self.end +%= 1;
-        self.pos += 1;
-        return self.start == self.end;
     }
-};
+    unreachable;
+}
+
+fn MarkerDetector(comptime marker_length: usize) type {
+    return struct {
+        const Self = @This();
+
+        buffer: [marker_length]u8 = undefined,
+        pos: usize = 0,
+        start: usize = 0,
+        end: usize = 0,
+
+        pub fn feedAndDetect(self: *Self, char: u8) bool {
+            var i: usize = self.start;
+            while (i != self.end) : (i = (i + 1) % marker_length) {
+                if (self.buffer[i] == char) {
+                    self.start = (i + 1) % marker_length;
+                }
+            }
+            self.buffer[self.end] = char;
+            self.end = (self.end + 1) % marker_length;
+            self.pos += 1;
+            return self.start == self.end;
+        }
+    };
+}
 
 test "example input" {
     assert(solvePart1("mjqjpqmgbljsphdztnvjfqwrcgsmlb") == 7);
@@ -54,36 +66,10 @@ test "example input" {
     assert(solvePart1("nppdvjthqldpwncqszvftbrmjlhg") == 6);
     assert(solvePart1("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg") == 10);
     assert(solvePart1("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw") == 11);
+
+    assert(solvePart2("mjqjpqmgbljsphdztnvjfqwrcgsmlb") == 19);
+    assert(solvePart2("bvwbjplbgvbhsrlpgdmjqwftvncz") == 23);
+    assert(solvePart2("nppdvjthqldpwncqszvftbrmjlhg") == 23);
+    assert(solvePart2("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg") == 29);
+    assert(solvePart2("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw") == 26);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trimRight = std.mem.trimRight;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

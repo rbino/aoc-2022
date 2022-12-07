@@ -1,14 +1,18 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
 const util = @import("util.zig");
 const gpa = util.gpa;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const CrateStack = ArrayList(u8);
+const tokenize = std.mem.tokenize;
+const split = std.mem.split;
+const splitBackwards = std.mem.splitBackwards;
+const indexOfStr = std.mem.indexOf;
+const trimRight = std.mem.trimRight;
+const parseInt = std.fmt.parseInt;
+const print = std.debug.print;
+const assert = std.debug.assert;
 
 const data = @embedFile("data/day05.txt");
 
@@ -151,6 +155,8 @@ fn moveCrates9001(stacks: []CrateStack, instr: []const u8) !void {
     try stacks[dst_stack].appendSlice(crates);
 }
 
+const testing_allocator = std.testing.allocator;
+
 test "parseNumberOfStacks" {
     assert(parseNumberOfStacks(" 1 2 3 4 5 ") == 5);
     assert(parseNumberOfStacks("1 2 3 4 5") == 5);
@@ -196,33 +202,3 @@ test "example input" {
     defer testing_allocator.free(result2);
     assert(std.mem.eql(u8, result2, "MCD"));
 }
-
-const testing_allocator = std.testing.allocator;
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const splitBackwards = std.mem.splitBackwards;
-const indexOfStr = std.mem.indexOf;
-const trimRight = std.mem.trimRight;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

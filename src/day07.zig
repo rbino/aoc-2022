@@ -33,7 +33,6 @@ const FileSystemEntry = union(enum) {
 const EntryMap = StrMap(FileSystemEntry);
 
 const Directory = struct {
-    parent: ?u32,
     size: u32,
     entries: EntryMap,
 };
@@ -87,7 +86,6 @@ fn populateDirectories(allocator: Allocator, input: []const u8) !MultiArrayList(
                 assert(directories.len == 0);
                 const entries = EntryMap.init(allocator);
                 const dir = .{
-                    .parent = null,
                     .size = 0,
                     .entries = entries,
                 };
@@ -113,7 +111,6 @@ fn populateDirectories(allocator: Allocator, input: []const u8) !MultiArrayList(
                 const current_dir = dir_stack.items[dir_stack.items.len - 1];
                 const entries = EntryMap.init(allocator);
                 const dir = .{
-                    .parent = current_dir,
                     .size = 0,
                     .entries = entries,
                 };
@@ -131,13 +128,9 @@ fn populateDirectories(allocator: Allocator, input: []const u8) !MultiArrayList(
                 var parent_entries = &directories.items(.entries)[current_dir];
                 try parent_entries.put(file_name, .{ .file = file_idx });
 
-                var dir_idx = current_dir;
-                while (true) {
-                    var size = &directories.items(.size)[dir_idx];
+                for (dir_stack.items) |dir| {
+                    var size = &directories.items(.size)[dir];
                     size.* += file_size;
-                    if (directories.items(.parent)[dir_idx]) |parent| {
-                        dir_idx = parent;
-                    } else break;
                 }
             },
         }

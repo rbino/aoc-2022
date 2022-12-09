@@ -3,19 +3,26 @@ const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const MultiArrayList = std.MultiArrayList;
 const ArrayList = std.ArrayList;
-const StringArrayHashMap = std.StringArrayHashMap;
-const Map = std.AutoHashMap;
 const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
 const util = @import("util.zig");
 const gpa = util.gpa;
+const tokenize = std.mem.tokenize;
+const indexOf = std.mem.indexOfScalar;
+const startsWith = std.mem.startsWith;
+const eql = std.mem.eql;
+const parseInt = std.fmt.parseInt;
+const print = std.debug.print;
+const assert = std.debug.assert;
+const maxInt = std.math.maxInt;
 
 const data = @embedFile("data/day07.txt");
 
 pub fn main() !void {
     const part1_result = try solvePart1(gpa, data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(gpa, data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
 const FileSystemEntry = union(enum) {
@@ -23,7 +30,7 @@ const FileSystemEntry = union(enum) {
     directory: u32,
 };
 
-const EntryMap = StringArrayHashMap(FileSystemEntry);
+const EntryMap = StrMap(FileSystemEntry);
 
 const Directory = struct {
     parent: ?u32,
@@ -36,23 +43,55 @@ fn solvePart1(allocator: Allocator, input: []const u8) !usize {
     defer arena_impl.deinit();
     const arena = arena_impl.allocator();
 
-    var directories = MultiArrayList(Directory){};
-    var files = ArrayList(u32).init(arena);
+    const directories = try populateDirectories(arena, input);
 
-    var dir_stack = ArrayList(u32).init(arena);
+    var ret: usize = 0;
+    for (directories.items(.size)) |size| {
+        if (size <= 100_000) ret += size;
+    }
+
+    return ret;
+}
+
+fn solvePart2(allocator: Allocator, input: []const u8) !usize {
+    var arena_impl = ArenaAllocator.init(allocator);
+    defer arena_impl.deinit();
+    const arena = arena_impl.allocator();
+
+    const directories = try populateDirectories(arena, input);
+
+    const total_disk_space = 70_000_000;
+    const needed_unused_space = 30_000_000;
+
+    const current_unused_space = total_disk_space - directories.get(0).size;
+    const min_deletion = needed_unused_space - current_unused_space;
+
+    var best: usize = maxInt(usize);
+    for (directories.items(.size)) |size| {
+        if (size >= min_deletion and size < best) best = size;
+    }
+
+    return best;
+}
+
+fn populateDirectories(allocator: Allocator, input: []const u8) !MultiArrayList(Directory) {
+    var directories = MultiArrayList(Directory){};
+    var files = ArrayList(u32).init(allocator);
+
+    var dir_stack = ArrayList(u32).init(allocator);
 
     var commands_iterator = tokenize(u8, input, "\n");
     while (commands_iterator.next()) |command| {
         switch (Command.parse(command)) {
             .root_cd => {
                 assert(directories.len == 0);
-                const entries = EntryMap.init(arena);
+                const entries = EntryMap.init(allocator);
                 const dir = .{
                     .parent = null,
                     .size = 0,
                     .entries = entries,
                 };
-                try directories.append(arena, dir);
+                try directories.append(allocator, dir);
                 try dir_stack.append(0);
             },
             .parent_cd => {
@@ -72,13 +111,13 @@ fn solvePart1(allocator: Allocator, input: []const u8) !usize {
             .ls => {},
             .dir_entry => |entry| {
                 const current_dir = dir_stack.items[dir_stack.items.len - 1];
-                const entries = EntryMap.init(arena);
+                const entries = EntryMap.init(allocator);
                 const dir = .{
                     .parent = current_dir,
                     .size = 0,
                     .entries = entries,
                 };
-                try directories.append(arena, dir);
+                try directories.append(allocator, dir);
                 const dir_idx = @intCast(u32, directories.len - 1);
                 var parent_entries = &directories.items(.entries)[current_dir];
                 try parent_entries.put(entry, .{ .directory = dir_idx });
@@ -104,12 +143,7 @@ fn solvePart1(allocator: Allocator, input: []const u8) !usize {
         }
     }
 
-    var ret: usize = 0;
-    for (directories.items(.size)) |size| {
-        if (size <= 100_000) ret += size;
-    }
-
-    return ret;
+    return directories;
 }
 
 const FileEntry = struct {
@@ -186,40 +220,9 @@ test "example input" {
         \\7214296 k    
     ;
 
-    const result = try solvePart1(testing_allocator, input);
-    try expectEqual(result, 95437);
+    const result1 = try solvePart1(testing_allocator, input);
+    try expectEqual(result1, 95437);
+
+    const result2 = try solvePart2(testing_allocator, input);
+    try expectEqual(result2, 24933642);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const startsWith = std.mem.startsWith;
-const eql = std.mem.eql;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

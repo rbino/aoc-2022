@@ -1,18 +1,18 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
+const tokenize = std.mem.tokenize;
+const eql = std.mem.eql;
+const parseInt = std.fmt.parseInt;
+const absCast = std.math.absCast;
+const print = std.debug.print;
+const assert = std.debug.assert;
 
 const data = @embedFile("data/day10.txt");
 
 pub fn main() !void {
     const part1_result = try solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    try solvePart2(data);
 }
 
 fn solvePart1(input: []const u8) !isize {
@@ -38,6 +38,33 @@ fn solvePart1(input: []const u8) !isize {
     }
 
     return sum_of_signal_strength;
+}
+
+fn solvePart2(input: []const u8) !void {
+    var crt_pos: isize = 0;
+    var x: isize = 1;
+    var cycles: isize = 1;
+    var instructions = tokenize(u8, input, "\n");
+    while (instructions.next()) |instr| {
+        const instruction = try Instruction.parse(instr);
+
+        var i = instruction.cycles();
+        while (i > 0) : (i -= 1) {
+            if (@mod(cycles, 40) == 1) {
+                crt_pos = 0;
+                print("\n", .{});
+            }
+            if (absCast(x - crt_pos) <= 1) print("#", .{}) else print(".", .{});
+            crt_pos += 1;
+            cycles += 1;
+        }
+
+        switch (instruction) {
+            .addx => |operand| x += operand,
+            else => {},
+        }
+    }
+    print("\n", .{});
 }
 
 const Instruction = union(enum) {
@@ -219,36 +246,3 @@ test "example input" {
 
     try expectEqual(try solvePart1(input), 13140);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-const eql = std.mem.eql;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

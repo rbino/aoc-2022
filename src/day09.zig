@@ -1,10 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
 const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
+const tokenize = std.mem.tokenize;
+const parseInt = std.fmt.parseInt;
+const absCast = std.math.absCast;
+const order = std.math.order;
+const sign = std.math.sign;
+const print = std.debug.print;
+const assert = std.debug.assert;
 const util = @import("util.zig");
 const gpa = util.gpa;
 
@@ -13,15 +16,16 @@ const data = @embedFile("data/day09.txt");
 pub fn main() !void {
     const part1_result = try solvePart1(gpa, data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(gpa, data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
-pub const Head = struct {
+pub const Knot = struct {
     x: isize,
     y: isize,
 
-    const Self = @This();
-
-    pub fn move(self: *Self, direction: u8) void {
+    pub fn move(self: *Knot, direction: u8) void {
         switch (direction) {
             'U' => self.y += 1,
             'D' => self.y -= 1,
@@ -30,32 +34,29 @@ pub const Head = struct {
             else => unreachable,
         }
     }
-};
 
-pub const Tail = struct {
-    x: isize,
-    y: isize,
-
-    const Self = @This();
-
-    pub fn follow(self: *Self, head: Head) void {
-        const x_delta = head.x - self.x;
-        const y_delta = head.y - self.y;
+    pub fn follow(self: *Knot, other: Knot) void {
+        const x_delta = other.x - self.x;
+        const y_delta = other.y - self.y;
 
         if (absCast(x_delta) <= 1 and absCast(y_delta) <= 1) return;
 
         if (absCast(x_delta) > 0 and absCast(y_delta) > 0) {
             switch (order(absCast(x_delta), absCast(y_delta))) {
                 .lt => {
-                    self.x = head.x;
-                    self.y = head.y - sign(y_delta);
+                    self.x = other.x;
+                    self.y = other.y - sign(y_delta);
                 },
 
                 .gt => {
-                    self.y = head.y;
-                    self.x = head.x - sign(x_delta);
+                    self.y = other.y;
+                    self.x = other.x - sign(x_delta);
                 },
-                else => unreachable,
+
+                .eq => {
+                    self.x = other.x - sign(x_delta);
+                    self.y = other.y - sign(y_delta);
+                },
             }
             return;
         }
@@ -69,10 +70,10 @@ pub const Tail = struct {
 };
 
 fn solvePart1(allocator: Allocator, input: []const u8) !usize {
-    var head = Head{ .x = 0, .y = 0 };
-    var tail = Tail{ .x = 0, .y = 0 };
+    var head: Knot = .{ .x = 0, .y = 0 };
+    var tail: Knot = .{ .x = 0, .y = 0 };
 
-    var position_set = Map(Tail, void).init(allocator);
+    var position_set = Map(Knot, void).init(allocator);
     defer position_set.deinit();
 
     var moves = tokenize(u8, input, "\n");
@@ -83,6 +84,31 @@ fn solvePart1(allocator: Allocator, input: []const u8) !usize {
             head.move(direction);
             tail.follow(head);
             _ = try position_set.fetchPut(tail, {});
+        }
+    }
+
+    return position_set.count();
+}
+
+fn solvePart2(allocator: Allocator, input: []const u8) !usize {
+    var head: Knot = .{ .x = 0, .y = 0 };
+    var tails: [9]Knot = [_]Knot{.{ .x = 0, .y = 0 }} ** 9;
+
+    var position_set = Map(Knot, void).init(allocator);
+    defer position_set.deinit();
+
+    var moves = tokenize(u8, input, "\n");
+    while (moves.next()) |move| {
+        const direction = move[0];
+        var times = try parseInt(usize, move[2..], 10);
+        while (times > 0) : (times -= 1) {
+            head.move(direction);
+            tails[0].follow(head);
+            var i: usize = 1;
+            while (i < tails.len) : (i += 1) {
+                tails[i].follow(tails[i - 1]);
+            }
+            _ = try position_set.fetchPut(tails[tails.len - 1], {});
         }
     }
 
@@ -105,39 +131,17 @@ test "example input" {
     ;
 
     try expectEqual(try solvePart1(testing_allocator, input), 13);
+    try expectEqual(try solvePart2(testing_allocator, input), 1);
+
+    const input2 =
+        \\R 5
+        \\U 8
+        \\L 8
+        \\D 3
+        \\R 17
+        \\D 10
+        \\L 25
+        \\U 20
+    ;
+    try expectEqual(try solvePart2(testing_allocator, input2), 36);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-const absCast = std.math.absCast;
-const order = std.math.order;
-const sign = std.math.sign;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.

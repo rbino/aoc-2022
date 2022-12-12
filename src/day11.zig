@@ -1,19 +1,22 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const BoundedArray = std.BoundedArray;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
 const LinearFifo = std.fifo.LinearFifo;
-
-const util = @import("util.zig");
-const gpa = util.gpa;
+const tokenize = std.mem.tokenize;
+const split = std.mem.split;
+const startsWith = std.mem.startsWith;
+const eql = std.mem.eql;
+const parseInt = std.fmt.parseInt;
+const print = std.debug.print;
+const assert = std.debug.assert;
 
 const data = @embedFile("data/day11.txt");
 
 pub fn main() !void {
     const part1_result = try solvePart1(data);
     print("Part 1 result: {}\n", .{part1_result});
+
+    const part2_result = try solvePart2(data);
+    print("Part 2 result: {}\n", .{part2_result});
 }
 
 fn solvePart1(input: []const u8) !usize {
@@ -30,6 +33,45 @@ fn solvePart1(input: []const u8) !usize {
             for (monkeys.slice()) |*monkey| {
                 while (monkey.turnTick()) |thrown_item| {
                     try monkeys.slice()[thrown_item.target].receiveItem(thrown_item.item);
+                }
+            }
+        }
+    }
+
+    var first_best: usize = 0;
+    var second_best: usize = 0;
+    for (monkeys.constSlice()) |monkey| {
+        const inspected_items = monkey.inspected_items;
+        if (inspected_items > first_best) {
+            second_best = first_best;
+            first_best = inspected_items;
+        } else if (inspected_items > second_best) {
+            second_best = inspected_items;
+        }
+    }
+
+    return first_best * second_best;
+}
+
+fn solvePart2(input: []const u8) !usize {
+    var monkeys = try BoundedArray(Monkey, 16).init(0);
+    var monkey_notes = split(u8, input, "\n\n");
+    while (monkey_notes.next()) |note| {
+        const monkey = try Monkey.init(note);
+        try monkeys.append(monkey);
+    }
+
+    var mcm: usize = 1;
+    for (monkeys.constSlice()) |monkey| {
+        mcm *= monkey.test_divisor;
+    }
+
+    {
+        var i: usize = 0;
+        while (i < 10_000) : (i += 1) {
+            for (monkeys.slice()) |*monkey| {
+                while (monkey.turnTickV2()) |thrown_item| {
+                    try monkeys.slice()[thrown_item.target].receiveItem(thrown_item.item % mcm);
                 }
             }
         }
@@ -115,6 +157,15 @@ const Monkey = struct {
         self.inspected_items += 1;
         item = self.operation.apply(item);
         item = @divFloor(item, 3);
+        const target =
+            if (item % self.test_divisor == 0) self.success_target else self.fail_target;
+        return .{ .item = item, .target = target };
+    }
+
+    pub fn turnTickV2(self: *Monkey) ?ThrownItem {
+        var item = self.items.readItem() orelse return null;
+        self.inspected_items += 1;
+        item = self.operation.apply(item);
         const target =
             if (item % self.test_divisor == 0) self.success_target else self.fail_target;
         return .{ .item = item, .target = target };
@@ -216,38 +267,5 @@ test "example input" {
     ;
 
     try expectEqual(try solvePart1(input), 10605);
+    try expectEqual(try solvePart2(input), 2713310158);
 }
-
-// Useful stdlib functions
-const tokenize = std.mem.tokenize;
-const split = std.mem.split;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const startsWith = std.mem.startsWith;
-const eql = std.mem.eql;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
-const min = std.math.min;
-const min3 = std.math.min3;
-const max = std.math.max;
-const max3 = std.math.max3;
-
-const print = std.debug.print;
-const assert = std.debug.assert;
-
-const sort = std.sort.sort;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
-
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.
